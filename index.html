@@ -1,0 +1,354 @@
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Anki-Excel Converter</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 40px;
+    background: #f9f9f9;
+    color: #333;
+  }
+
+  h1, h2, h3 {
+    font-weight: normal;
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    margin-bottom: 20px;
+    font-size: 1.8em;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .tool-section {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+  }
+
+  .tool-section h2 {
+    font-size: 1.6em;
+    margin-top: 0;
+    font-weight: bold;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+  }
+
+  #mode-select {
+    margin-bottom: 20px;
+  }
+
+  #mode-select label {
+    display: inline-block;
+    margin-right: 20px;
+    font-size: 1em;
+  }
+
+  #dropzone {
+    border: 2px dashed #aaa;
+    border-radius: 10px;
+    padding: 50px;
+    text-align: center;
+    color: #555;
+    font-size: 1em;
+    transition: border-color 0.3s;
+    cursor: pointer;
+    margin-bottom: 20px;
+    background: #fafafa;
+  }
+  
+  #dropzone.dragover {
+    border-color: #333;
+    background: #f0f0f0;
+  }
+
+  .instructions-box {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .instructions-heading {
+    font-size: 1.6em;
+    font-weight: bold;
+    color: #333;
+    border-bottom: 3px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
+  .subsection {
+    background: #f7f7f7;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .subsection h3 {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+    margin-top: 0;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+  }
+
+  .subsection ol {
+    margin-left: 20px;
+  }
+
+  .subsection ol li {
+    margin-bottom: 5px;
+  }
+
+  .highlight {
+    font-weight: bold;
+    color: #333;
+  }
+
+  code {
+    background: #f0f0f0;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+
+  .credit-box {
+    font-size: 0.85em;
+    color: #666;
+    margin-top: 40px;
+    border-top: 1px solid #ddd;
+    padding-top: 20px;
+    text-align: center;
+  }
+
+  .credit-box p {
+    margin: 5px 0;
+  }
+
+  .credit-box p:first-child {
+    font-style: italic;
+  }
+
+  .credit-box a {
+    color: #666;
+    text-decoration: underline;
+  }
+
+  .explanation {
+    font-size: 0.95em;
+    margin-bottom: 20px;
+    color: #555;
+  }
+
+  .disclaimer {
+    margin-top: 20px;
+    font-size: 0.85em;
+    color: #999;
+  }
+</style>
+<script async src='https://www.googletagmanager.com/gtag/js?id=G-ZQVBD601G7'></script><script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-ZQVBD601G7');</script></head>
+<body>
+<div class="container">
+  <h1>Anki ↔ Excel Converter</h1>
+
+  <div class="tool-section">
+    <h2>Convert Your File</h2>
+    <p class="explanation">Choose a mode, then drop your file here to convert it instantly. A download prompt will appear as soon as the file is converted.</p>
+    <div id="mode-select">
+      <label><input type="radio" name="mode" value="toexcel" checked> Anki to Excel (UTF-8 CSV)</label>
+      <label><input type="radio" name="mode" value="toanki"> Excel to Anki (UTF-8 Tab-Delimited TXT)</label>
+    </div>
+    <div id="dropzone">Drop your file here or click to select</div>
+    <input type="file" id="file-input" style="display:none;" />
+  </div>
+
+  <div class="instructions-box">
+    <h2 class="instructions-heading">Instructions</h2>
+    <p>This tool helps you move notes between Anki and Excel without manual re-encoding steps and without going through Excel’s Text Import Wizard. Just follow the steps below.</p>
+
+    <div class="subsection">
+      <h3>Exporting from Anki (for "Anki to Excel" mode)</h3>
+      <ol>
+        <li>In Anki, go to <strong>File > Export</strong>.</li>
+        <li>Select <strong>"Notes in Plain Text"</strong> as the export format.</li>
+        <li>Select the deck you want to export.</li>
+        <li>Optionally include tags, HTML, or media references as needed.</li>
+        <li>Export the deck as a <strong>.txt</strong> file.</li>
+      </ol>
+      <p>Next, select the <strong>"Anki to Excel"</strong> option above and then drag and drop your exported <strong>.txt</strong> file onto the drop zone (or click to select it). <span class="highlight">As soon as you drop the file, it will be converted automatically and your browser will prompt you to save the new <code>yourfile-excel_ready.csv</code> file.</span> This CSV will open directly in Excel with proper encoding.</p>
+    </div>
+
+    <div class="subsection">
+      <h3>Editing in Excel</h3>
+      <ol>
+        <li>Open the generated CSV directly in Excel by double-clicking it.</li>
+        <li>Make your edits. Each column corresponds to a field in your Anki note type.</li>
+        <li>When finished, just use <strong>File &gt; Save</strong> or <strong>Ctrl+S</strong> to preserve UTF-8 encoding with no extra steps required.</li>
+      </ol>
+    </div>
+
+    <div class="subsection">
+      <h3>Importing Back into Anki (for "Excel to Anki" mode)</h3>
+      <ol>
+        <li>Select "Excel to Anki" above.</li>
+        <li>Upload the edited UTF-8 CSV file in the same manner.</li>
+        <li><span class="highlight">Right after dropping the file, you’ll be prompted to save the new <code>yourfile-anki_ready.txt</code> file.</span> This file is UTF-8 tab-delimited and ready for Anki.</li>
+        <li>In Anki, go to <strong>File &gt; Import</strong> and select this file to import your changes.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="credit-box">
+    <p>Credit & Additional Information:</p>
+    <p>Adapted from the original process:  
+    <a href="https://docs.google.com/document/u/0/d/12YE_FS6A9ANLTESJNtPP116ti4nNmCBghyoJBRtno_k/mobilebasic?pli=1" target="_blank">
+    Original Instructions Document</a></p>
+    <p>Further details on importing (including handling HTML or media):  
+    <a href="https://docs.ankiweb.net/importing.html" target="_blank">https://docs.ankiweb.net/importing.html</a></p>
+    <p><em>Note: These instructions assume a modern version of Excel (e.g., Excel 2016 or later, or Microsoft 365) that preserves UTF-8 encoding when simply using File &gt; Save or Ctrl+S.</em></p>
+    <p class="disclaimer">This tool is a bit experimental, so proceed at your own risk. If your Anki deck suddenly insists on spelling everything backwards, you’re on your own.</p>
+  </div>
+</div>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('dragover');
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  dropzone.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      handleFile(fileInput.files[0]);
+    }
+  });
+
+  function handleFile(file) {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const reader = new FileReader();
+  
+      reader.onload = function (e) {
+          const text = e.target.result;
+          let baseName = file.name.replace(/\.[^/.]+$/, ''); // remove extension
+  
+          if (mode === 'toexcel') {
+              // Convert from tab-delimited (Anki) to CSV (UTF-8 with BOM)
+              const rows = parseTabDelimited(text);
+              const csv = rowsToCsv(rows);
+              downloadUTF8BOM(csv, `${baseName}-excel_ready.csv`);
+          } else {
+              // Convert from CSV to tab-delimited (for Anki)
+              const rows = parseCSV(text);
+              const tabText = rows.map(r => r.join('\t')).join('\n');
+  
+              // Replace 'excel_ready' with 'anki_ready' if present, or append 'anki_ready'
+              if (baseName.includes('-excel_ready')) {
+                  baseName = baseName.replace('-excel_ready', '-anki_ready');
+              } else {
+                  baseName += '-anki_ready';
+              }
+              downloadUTF8BOM(tabText, `${baseName}.txt`, 'text/plain;charset=utf-8;');
+          }
+      };
+  
+      reader.readAsText(file, 'utf-8');
+  }
+
+  function parseTabDelimited(text) {
+    const lines = text.split(/\r?\n/);
+    return lines.map(line => line.trim() ? line.split('\t') : []);
+  }
+
+  function rowsToCsv(rows) {
+    return rows.map(row =>
+      row.map(field => {
+        const f = field.replace(/"/g, '""');
+        return `"${f}"`;
+      }).join(',')
+    ).join('\n');
+  }
+
+  function parseCSV(csvText) {
+    const lines = csvText.split(/\r?\n/);
+    return lines.map(line => parseCsvLine(line));
+  }
+
+  function parseCsvLine(line) {
+    const result = [];
+    let currentField = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (insideQuotes && i + 1 < line.length && line[i+1] === '"') {
+          currentField += '"';
+          i++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        result.push(currentField);
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    result.push(currentField);
+    return result;
+  }
+
+  function downloadUTF8BOM(content, filename, mimeType='text/csv;charset=utf-8;') {
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + content], { type: mimeType });
+    triggerDownload(blob, filename);
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+</script>
+</body>
+</html>
