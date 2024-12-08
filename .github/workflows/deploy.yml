@@ -15,7 +15,7 @@ jobs:
     - name: Inject Google Analytics
       run: |
         GA_SCRIPT="<script async src='https://www.googletagmanager.com/gtag/js?id=${{ secrets.GA_TRACKING_ID }}'></script><script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${{ secrets.GA_TRACKING_ID }}');</script>"
-        sed -i "s|</head>|${GA_SCRIPT}</head>|g" index.html
+        sed -i "s#</head>#${GA_SCRIPT}</head>#g" index.html
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
