@@ -263,8 +263,20 @@
 
   function handleFile(file) {
       const mode = document.querySelector('input[name="mode"]:checked').value;
-      const reader = new FileReader();
+      const fileExtension = file.name.split('.').pop().toLowerCase();
   
+      // Validate file type based on the selected mode
+      if (mode === 'toexcel' && fileExtension !== 'txt') {
+          alert('Please upload a .txt file for "Anki to Excel" mode.');
+          return;
+      }
+  
+      if (mode === 'toanki' && fileExtension !== 'csv') {
+          alert('Please upload a .csv file for "Excel to Anki" mode.');
+          return;
+      }
+  
+      const reader = new FileReader();
       reader.onload = function (e) {
           const text = e.target.result;
           let baseName = file.name.replace(/\.[^/.]+$/, ''); // remove extension
