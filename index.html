@@ -319,33 +319,45 @@
   }
 
   function parseCSV(csvText) {
-    const lines = csvText.split(/\r?\n/);
-    return lines.map(line => parseCsvLine(line));
-  }
-
-  function parseCsvLine(line) {
-    const result = [];
+    const rows = [];
+    let currentRow = [];
     let currentField = '';
     let insideQuotes = false;
 
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
+    for (let i = 0; i < csvText.length; i++) {
+      const char = csvText[i];
+      const nextChar = csvText[i + 1];
+
       if (char === '"') {
-        if (insideQuotes && i + 1 < line.length && line[i+1] === '"') {
+        if (insideQuotes && nextChar === '"') {
           currentField += '"';
           i++;
         } else {
           insideQuotes = !insideQuotes;
         }
       } else if (char === ',' && !insideQuotes) {
-        result.push(currentField);
+        currentRow.push(currentField);
         currentField = '';
+      } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+        currentRow.push(currentField);
+        currentField = '';
+        rows.push(currentRow);
+        currentRow = [];
+
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
       } else {
         currentField += char;
       }
     }
-    result.push(currentField);
-    return result;
+
+    if (currentField.length > 0 || currentRow.length > 0) {
+      currentRow.push(currentField);
+      rows.push(currentRow);
+    }
+
+    return rows;
   }
 
   function downloadUTF8BOM(content, filename, mimeType='text/csv;charset=utf-8;') {
