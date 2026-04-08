@@ -4,21 +4,44 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v6
 
     - name: Inject Google Analytics
+      env:
+        GA_TRACKING_ID: ${{ secrets.GA_TRACKING_ID }}
       run: |
-        GA_SCRIPT="<script async src='https://www.googletagmanager.com/gtag/js?id=${{ secrets.GA_TRACKING_ID }}'></script><script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${{ secrets.GA_TRACKING_ID }}');</script>"
-        sed -i "s#</head>#${GA_SCRIPT}</head>#g" index.html
+        if [ -n "$GA_TRACKING_ID" ]; then
+          GA_SCRIPT="<script async src='https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}'></script><script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${GA_TRACKING_ID}');</script>"
+          sed -i "s#</head>#${GA_SCRIPT}</head>#g" index.html
+        fi
+
+    - name: Configure GitHub Pages
+      uses: actions/configure-pages@v6
+
+    - name: Upload GitHub Pages artifact
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: ./
 
     - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./
+      id: deployment
+      uses: actions/deploy-pages@v5
