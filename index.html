@@ -289,7 +289,9 @@
           } else {
               // Convert from CSV to tab-delimited (for Anki)
               const rows = parseCSV(text);
-              const tabText = rows.map(r => r.join('\t')).join('\n');
+              const tabText = rows
+                .map(row => row.map(restoreExcelSafeField).join('\t'))
+                .join('\n');
   
               // Replace 'excel_ready' with 'anki_ready' if present, or append 'anki_ready'
               if (baseName.includes('-excel_ready')) {
@@ -316,10 +318,18 @@
   function rowsToCsv(rows) {
     return rows.map(row =>
       row.map(field => {
-        const f = field.replace(/"/g, '""');
+        const f = makeExcelSafeField(field).replace(/"/g, '""');
         return `"${f}"`;
       }).join(',')
     ).join('\n');
+  }
+
+  function makeExcelSafeField(field) {
+    return /^[=+\-@]/.test(field) ? `'${field}` : field;
+  }
+
+  function restoreExcelSafeField(field) {
+    return /^'[=+\-@]/.test(field) ? field.slice(1) : field;
   }
 
   function parseCSV(csvText) {
