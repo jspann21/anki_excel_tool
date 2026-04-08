@@ -44,16 +44,6 @@
     margin-bottom: 15px;
   }
 
-  #mode-select {
-    margin-bottom: 20px;
-  }
-
-  #mode-select label {
-    display: inline-block;
-    margin-right: 20px;
-    font-size: 1em;
-  }
-
   #dropzone {
     border: 2px dashed #aaa;
     border-radius: 10px;
@@ -172,18 +162,14 @@
 
   <div class="tool-section">
     <h2>Convert Your File</h2>
-    <p class="explanation">Choose a mode, then drop your file here to convert it instantly. A download prompt will appear as soon as the file is converted.</p>
-    <div id="mode-select">
-      <label><input type="radio" name="mode" value="toexcel" checked> Anki to Excel (UTF-8 CSV)</label>
-      <label><input type="radio" name="mode" value="toanki"> Excel to Anki (UTF-8 Tab-Delimited TXT)</label>
-    </div>
+    <p class="explanation">Drop an Anki text export or a spreadsheet CSV here. The tool will detect the file type and download the converted version automatically.</p>
     <div id="dropzone">Drop your file here or click to select</div>
-    <input type="file" id="file-input" style="display:none;" />
+    <input type="file" id="file-input" accept=".txt,.csv,text/plain,text/csv" style="display:none;" />
   </div>
 
   <div class="instructions-box">
     <h2 class="instructions-heading">Instructions</h2>
-    <p>This tool helps you move notes between Anki and Excel without manual re-encoding steps and without going through Excel’s Text Import Wizard. Just follow the steps below.</p>
+    <p>This tool helps you move notes between Anki and Excel without choosing a mode manually. Export from Anki, edit in Excel, then drop the saved spreadsheet back here when you are done.</p>
 
     <div class="subsection">
       <h3>Exporting from Anki (for "Anki to Excel" mode)</h3>
@@ -194,7 +180,7 @@
         <li>Optionally include tags, HTML, or media references as needed.</li>
         <li>Export the deck as a <strong>.txt</strong> file.</li>
       </ol>
-      <p>Next, select the <strong>"Anki to Excel"</strong> option above and then drag and drop your exported <strong>.txt</strong> file onto the drop zone (or click to select it). <span class="highlight">As soon as you drop the file, it will be converted automatically and your browser will prompt you to save the new <code>yourfile-excel_ready.csv</code> file.</span> This CSV will open directly in Excel with proper encoding.</p>
+      <p>Next, drag and drop your exported <strong>.txt</strong> file onto the drop zone (or click to select it). <span class="highlight">As soon as you drop the file, it will be converted automatically and your browser will prompt you to save the new <code>yourfile-excel_ready.csv</code> file.</span> This CSV will open directly in Excel with proper encoding.</p>
     </div>
 
     <div class="subsection">
@@ -207,9 +193,8 @@
     </div>
 
     <div class="subsection">
-      <h3>Importing Back into Anki (for "Excel to Anki" mode)</h3>
+      <h3>Importing Back into Anki</h3>
       <ol>
-        <li>Select "Excel to Anki" above.</li>
         <li>Upload the edited UTF-8 CSV file in the same manner.</li>
         <li><span class="highlight">Right after dropping the file, you’ll be prompted to save the new <code>yourfile-anki_ready.txt</code> file.</span> This file is UTF-8 tab-delimited and ready for Anki.</li>
         <li>In Anki, go to <strong>File &gt; Import</strong> and select this file to import your changes.</li>
@@ -262,26 +247,19 @@
   });
 
   function handleFile(file) {
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-  
-      // Validate file type based on the selected mode
-      if (mode === 'toexcel' && fileExtension !== 'txt') {
-          alert('Please upload a .txt file for "Anki to Excel" mode.');
-          return;
-      }
-  
-      if (mode === 'toanki' && fileExtension !== 'csv') {
-          alert('Please upload a .csv file for "Excel to Anki" mode.');
-          return;
-      }
-  
       const reader = new FileReader();
       reader.onload = function (e) {
           const text = stripUTF8BOM(e.target.result);
+          const inputType = detectInputType(file, text);
+
+          if (!inputType) {
+              alert('Unsupported file. Please upload an Anki text export (.txt) or spreadsheet CSV (.csv).');
+              return;
+          }
+
           let baseName = file.name.replace(/\.[^/.]+$/, ''); // remove extension
   
-          if (mode === 'toexcel') {
+          if (inputType === 'anki-export') {
               // Convert from tab-delimited (Anki) to CSV (UTF-8 with BOM)
               const rows = parseTabDelimited(text);
               const csv = rowsToCsv(rows);
@@ -304,6 +282,31 @@
       };
   
       reader.readAsText(file, 'utf-8');
+  }
+
+  function detectInputType(file, text) {
+    const fileExtension = file.name.includes('.')
+      ? file.name.split('.').pop().toLowerCase()
+      : '';
+    const sample = text.slice(0, 2048);
+
+    if (fileExtension === 'txt') {
+      return 'anki-export';
+    }
+
+    if (fileExtension === 'csv') {
+      return 'spreadsheet';
+    }
+
+    if (sample.includes('\t')) {
+      return 'anki-export';
+    }
+
+    if (sample.includes(',') || /^sep=/im.test(sample)) {
+      return 'spreadsheet';
+    }
+
+    return null;
   }
 
   function stripUTF8BOM(text) {
