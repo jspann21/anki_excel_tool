@@ -62,6 +62,41 @@
     background: #f0f0f0;
   }
 
+  .status-box {
+    display: none;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px;
+    background: #f7f7f7;
+  }
+
+  .status-box.visible {
+    display: block;
+  }
+
+  .status-box h3 {
+    margin-bottom: 12px;
+    font-size: 1.1em;
+    font-weight: bold;
+  }
+
+  .status-row {
+    margin-bottom: 8px;
+  }
+
+  .status-row strong {
+    display: inline-block;
+    min-width: 140px;
+  }
+
+  .status-warnings {
+    margin: 8px 0 0 20px;
+  }
+
+  .status-warnings li {
+    margin-bottom: 4px;
+  }
+
   .instructions-box {
     background: #fff;
     border: 1px solid #ddd;
@@ -165,6 +200,14 @@
     <p class="explanation">Drop an Anki text export or a spreadsheet CSV here. The tool will detect the file type and download the converted version automatically.</p>
     <div id="dropzone">Drop your file here or click to select</div>
     <input type="file" id="file-input" accept=".txt,.csv,text/plain,text/csv" style="display:none;" />
+    <div id="status-box" class="status-box" aria-live="polite">
+      <h3 id="status-action"></h3>
+      <div class="status-row"><strong>File type detected:</strong> <span id="status-file-type"></span></div>
+      <div class="status-row"><strong>Rows converted:</strong> <span id="status-row-count"></span></div>
+      <div class="status-row"><strong>Output filename:</strong> <span id="status-output"></span></div>
+      <div class="status-row"><strong>Warnings:</strong></div>
+      <ul id="status-warnings" class="status-warnings"></ul>
+    </div>
   </div>
 
   <div class="instructions-box">
@@ -172,7 +215,7 @@
     <p>This tool helps you move notes between Anki and Excel without choosing a mode manually. Export from Anki, edit in Excel, then drop the saved spreadsheet back here when you are done.</p>
 
     <div class="subsection">
-      <h3>Exporting from Anki (for "Anki to Excel" mode)</h3>
+      <h3>Exporting from Anki</h3>
       <ol>
         <li>In Anki, go to <strong>File > Export</strong>.</li>
         <li>Select <strong>"Notes in Plain Text"</strong> as the export format.</li>
@@ -218,6 +261,12 @@
 <script>
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('file-input');
+  const statusBox = document.getElementById('status-box');
+  const statusAction = document.getElementById('status-action');
+  const statusFileType = document.getElementById('status-file-type');
+  const statusRowCount = document.getElementById('status-row-count');
+  const statusOutput = document.getElementById('status-output');
+  const statusWarnings = document.getElementById('status-warnings');
 
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -247,6 +296,8 @@
   });
 
   function handleFile(file) {
+      clearStatus();
+
       const reader = new FileReader();
       reader.onload = function (e) {
           const text = stripUTF8BOM(e.target.result);
@@ -258,18 +309,52 @@
           }
 
           let baseName = file.name.replace(/\.[^/.]+$/, ''); // remove extension
+          let rows = [];
+          let outputFilename = '';
+          const warnings = [];
+
+          if (inputType.inferredFromContent) {
+              warnings.push('File type was inferred from the file contents because the extension was missing or unrecognized.');
+          }
   
-          if (inputType === 'anki-export') {
+          if (inputType.kind === 'anki-export') {
               // Convert from tab-delimited (Anki) to CSV (UTF-8 with BOM)
-              const rows = parseTabDelimited(text);
+              rows = parseTabDelimited(text);
               const csv = rowsToCsv(rows);
-              downloadUTF8BOM(csv, `${baseName}-excel_ready.csv`);
+              outputFilename = `${baseName}-excel_ready.csv`;
+
+              const protectedFieldCount = countFieldsMatching(rows, /^[=+\-@]/);
+              if (protectedFieldCount > 0) {
+                  warnings.push(`Protected ${protectedFieldCount} field(s) from being treated as Excel formulas.`);
+              }
+
+              if (countNonEmptyRows(rows) === 0) {
+                  warnings.push('No populated rows were detected in the Anki export.');
+              }
+
+              renderStatusSummary({
+                  action: 'Anki export detected -> Download Excel file',
+                  fileType: 'Anki text export (.txt)',
+                  rowCount: countNonEmptyRows(rows),
+                  outputFilename,
+                  warnings
+              });
+              downloadUTF8BOM(csv, outputFilename);
           } else {
               // Convert from CSV to tab-delimited (for Anki)
-              const rows = parseCSV(text);
+              rows = parseCSV(text);
               const tabText = rows
                 .map(row => row.map(restoreExcelSafeField).join('\t'))
                 .join('\n');
+
+              const restoredFieldCount = countFieldsMatching(rows, /^'[=+\-@]/);
+              if (restoredFieldCount > 0) {
+                  warnings.push(`Removed the spreadsheet-safe apostrophe from ${restoredFieldCount} field(s) before creating the Anki import file.`);
+              }
+
+              if (countNonEmptyRows(rows) === 0) {
+                  warnings.push('No populated rows were detected in the spreadsheet.');
+              }
   
               // Replace 'excel_ready' with 'anki_ready' if present, or append 'anki_ready'
               if (baseName.includes('-excel_ready')) {
@@ -277,11 +362,42 @@
               } else {
                   baseName += '-anki_ready';
               }
-              downloadUTF8BOM(tabText, `${baseName}.txt`, 'text/plain;charset=utf-8;');
+              outputFilename = `${baseName}.txt`;
+
+              renderStatusSummary({
+                  action: 'Spreadsheet detected -> Download Anki import file',
+                  fileType: 'Spreadsheet CSV (.csv)',
+                  rowCount: countNonEmptyRows(rows),
+                  outputFilename,
+                  warnings
+              });
+              downloadUTF8BOM(tabText, outputFilename, 'text/plain;charset=utf-8;');
           }
       };
   
       reader.readAsText(file, 'utf-8');
+  }
+
+  function renderStatusSummary({ action, fileType, rowCount, outputFilename, warnings }) {
+    statusAction.textContent = action;
+    statusFileType.textContent = fileType;
+    statusRowCount.textContent = String(rowCount);
+    statusOutput.textContent = outputFilename;
+    statusWarnings.innerHTML = '';
+
+    const warningItems = warnings.length > 0 ? warnings : ['None'];
+    warningItems.forEach((warning) => {
+      const item = document.createElement('li');
+      item.textContent = warning;
+      statusWarnings.appendChild(item);
+    });
+
+    statusBox.classList.add('visible');
+  }
+
+  function clearStatus() {
+    statusBox.classList.remove('visible');
+    statusWarnings.innerHTML = '';
   }
 
   function detectInputType(file, text) {
@@ -291,19 +407,19 @@
     const sample = text.slice(0, 2048);
 
     if (fileExtension === 'txt') {
-      return 'anki-export';
+      return { kind: 'anki-export', inferredFromContent: false };
     }
 
     if (fileExtension === 'csv') {
-      return 'spreadsheet';
+      return { kind: 'spreadsheet', inferredFromContent: false };
     }
 
     if (sample.includes('\t')) {
-      return 'anki-export';
+      return { kind: 'anki-export', inferredFromContent: true };
     }
 
     if (sample.includes(',') || /^sep=/im.test(sample)) {
-      return 'spreadsheet';
+      return { kind: 'spreadsheet', inferredFromContent: true };
     }
 
     return null;
@@ -316,6 +432,16 @@
   function parseTabDelimited(text) {
     const lines = text.split(/\r?\n/);
     return lines.map(line => line.trim() ? line.split('\t') : []);
+  }
+
+  function countNonEmptyRows(rows) {
+    return rows.filter(row => row.some(cell => cell !== '')).length;
+  }
+
+  function countFieldsMatching(rows, pattern) {
+    return rows.reduce((count, row) => {
+      return count + row.filter(field => pattern.test(field)).length;
+    }, 0);
   }
 
   function rowsToCsv(rows) {
