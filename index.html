@@ -278,7 +278,7 @@
   
       const reader = new FileReader();
       reader.onload = function (e) {
-          const text = e.target.result;
+          const text = stripUTF8BOM(e.target.result);
           let baseName = file.name.replace(/\.[^/.]+$/, ''); // remove extension
   
           if (mode === 'toexcel') {
@@ -302,6 +302,10 @@
       };
   
       reader.readAsText(file, 'utf-8');
+  }
+
+  function stripUTF8BOM(text) {
+    return text.replace(/^\uFEFF/, '');
   }
 
   function parseTabDelimited(text) {
